@@ -1,25 +1,48 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spy System Setup</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <title>Spy System</title>
     <style>
-        body { background: #000; color: #0f0; font-family: monospace; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .btn { background: #0f0; color: #000; border: none; padding: 15px 30px; font-weight: bold; cursor: pointer; border-radius: 8px; margin-top: 20px; }
+        body { font-family: sans-serif; background: #1c1c1c; color: white; padding: 20px; }
+        input { width: 100%; padding: 10px; margin: 10px 0; border-radius: 8px; border: none; }
+        button { width: 100%; padding: 12px; background: #0088cc; color: white; border: none; border-radius: 8px; cursor: pointer; }
     </style>
 </head>
 <body>
-    <h1>🛸 SPY SYSTEM ACTIVE</h1>
-    <p>User: Mukhsan</p>
-    <div id="user-data"></div>
-    <button class="btn" onclick="tg.close()">CLOSE SYSTEM</button>
+    <h2>Настройка каналов</h2>
+    <input type="text" id="source" placeholder="ID канала донора (откуда)">
+    <input type="text" id="target" placeholder="ID вашего канала (куда)">
+    <button onclick="saveData()">Сохранить настройки</button>
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.expand(); // Развернуть на весь экран
-        document.getElementById('user-data').innerText = "Hello, " + (tg.initDataUnsafe.user?.first_name || "Agent");
+        tg.expand();
+
+        async function saveData() {
+            const source = document.getElementById('source').value;
+            const target = document.getElementById('target').value;
+            const userId = tg.initDataUnsafe?.user?.id || "unknown";
+
+            // ТВОЙ УРЛ ТУННЕЛЯ (Замени, если он другой!)
+            const tunnelUrl = 'https://cc0acccec55985.lhr.life';
+
+            try {
+                await fetch(`${tunnelUrl}/user/setup`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Bypass-Tunnel-Reminder': 'true' 
+                    },
+                    body: JSON.stringify({ sourceId: source, targetId: target, tgId: userId })
+                });
+                tg.showAlert("✅ Настройки успешно отправлены на сервер!");
+            } catch (e) {
+                tg.showAlert("❌ Ошибка: проверьте, запущен ли бэкенд на ПК.");
+            }
+        }
     </script>
 </body>
 </html>
