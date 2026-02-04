@@ -1,35 +1,56 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Telegraf } from 'telegraf';
+
+// Интерфейс для данных пользователя
+export interface User {
+  id: number;
+  name: string;
+  hasAccess: boolean;
+  username?: string;
+}
 
 @Injectable()
-export class BotService implements OnModuleInit {
-  private bot: Telegraf;
+export class BotService {
+  // Временная база данных в памяти сервиса
+  private users: User[] = [];
 
-  constructor(private configService: ConfigService) {
-    const token = this.configService.get<string>('BOT_TOKEN');
-    if (!token) {
-      throw new Error('BOT_TOKEN is not defined');
+  constructor(private config: ConfigService) {}
+
+  // Метод для регистрации/обновления пользователя
+  registerUser(id: number, name: string, username?: string): User {
+    let user = this.users.find((u) => u.id === id);
+    if (!user) {
+      user = { id, name, username, hasAccess: false };
+      this.users.push(user);
     }
-    this.bot = new Telegraf(token);
+    return user;
   }
 
-  async onModuleInit() {
-    const webAppUrl = this.configService.get<string>('WEBAPP_URL');
-    if (!webAppUrl) {
-      // Это именно то место, где у тебя вылетала ошибка
-      throw new Error('WEBAPP_URL is not defined in your .env file');
-    }
-    console.log('✅ Bot Service: Настроен на URL:', webAppUrl);
-    console.log('🚀 Система готова к работе!');
+  // Получить всех пользователей (для админа)
+  getAllUsers(): User[] {
+    return this.users;
   }
 
-  // Метод для пересылки сообщений из UserBot
-  async sendMessage(chatId: string, text: string) {
-    try {
-      await this.bot.telegram.sendMessage(chatId, text, { parse_mode: 'HTML' });
-    } catch (e) {
-      console.error('Ошибка отправки сообщения:', e.message);
+  // Найти одного пользователя
+  getUserById(id: number): User | undefined {
+    return this.users.find((u) => u.id === id);
+  }
+
+  // Переключить доступ
+  toggleAccess(id: number): boolean {
+    const user = this.getUserById(id);
+    if (user) {
+      user.hasAccess = !user.hasAccess;
+      return user.hasAccess;
     }
+    return false;
+  }
+
+  // Получить статистику
+  getStats() {
+    return {
+      total: this.users.length,
+      active: this.users.filter((u) => u.hasAccess).length,
+    };
   }
 }

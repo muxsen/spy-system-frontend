@@ -1,44 +1,29 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
-import { TelegramClient } from 'telegram';
-import { StringSession } from 'telegram/sessions';
-import { NewMessage } from 'telegram/events';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { User } from '../users/schemas/user.schema';
-import { AiService } from '../ai/ai.service';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document } from 'mongoose';
 
-@Injectable()
-export class UserbotService implements OnModuleInit {
-  private client: TelegramClient;
+@Schema({ timestamps: true })
+export class User extends Document {
+  @Prop({ required: true, unique: true })
+  telegramId: number;
 
-  constructor(
-    @InjectModel('User') private userModel: Model<User>,
-    private aiService: AiService,
-  ) {}
+  @Prop()
+  username: string;
 
-  async onModuleInit() {
-    // Добавляем !, чтобы TS не ругался на undefined
-    const session = new StringSession(process.env.TELEGRAM_SESSION!);
-    const apiId = Number(process.env.TELEGRAM_API_ID!);
-    const apiHash = process.env.TELEGRAM_API_HASH!;
+  @Prop({ default: false })
+  hasSubscription: boolean;
 
-    this.client = new TelegramClient(session, apiId, apiHash, { connectionRetries: 5 });
-    
-    await this.client.connect();
+  @Prop()
+  subscriptionType: string;
 
-    this.client.addEventHandler(async (event: any) => {
-      const message = event.message;
-      if (!message?.text) return;
+  @Prop()
+  subscriptionExpiresAt: Date;
 
-      const subscribers = await this.userModel.find({ isPaid: true });
+  // Добавляем эти поля, чтобы убрать ошибки в worker/userbot.service.ts
+  @Prop()
+  sourceChannelId: string;
 
-      for (const sub of subscribers) {
-        if (sub.sourceChannelId && sub.targetChannelId) {
-            const cleanText = await this.aiService.cleanText(message.text);
-            // Используем прямой вызов клиента для отправки
-            await this.client.sendMessage(sub.targetChannelId, { message: cleanText });
-        }
-      }
-    }, new NewMessage({}));
-  }
+  @Prop()
+  targetChannelId: string;
 }
+
+export const UserSchema = SchemaFactory.createForClass(User);

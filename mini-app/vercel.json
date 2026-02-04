@@ -1,13 +1,17 @@
 {
   "version": 2,
-  "public": true,
-  "cleanUrls": true,
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "Bypass-Tunnel-Reminder", "value": "true" },
-        { "key": "Access-Control-Allow-Origin", "value": "*" }
+        {
+          "key": "Bypass-Tunnel-Reminder",
+          "value": "true"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        }
       ]
     }
   ]

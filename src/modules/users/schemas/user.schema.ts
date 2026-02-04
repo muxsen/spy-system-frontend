@@ -4,22 +4,26 @@ import { Document } from 'mongoose';
 @Schema({ timestamps: true })
 export class User extends Document {
   @Prop({ required: true, unique: true })
-  tgId: number;
+  telegramId: number;
 
   @Prop()
   username: string;
 
-  @Prop()
-  firstName: string;
-
   @Prop({ default: false })
-  isPaid: boolean; // Оплачен ли доступ
+  hasSubscription: boolean;
 
   @Prop()
-  sourceChannelId: string; // Канал друга (откуда берем)
+  subscriptionType: string;
 
   @Prop()
-  targetChannelId: string; // Твой канал (куда постим)
+  subscriptionExpiresAt: Date;
+
+  // Эти поля нужны для корректной работы userbot.service.ts
+  @Prop()
+  sourceChannelId: string;
+
+  @Prop()
+  targetChannelId: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
