@@ -1,14 +1,15 @@
 import { Controller, Post, Body } from '@nestjs/common';
+import { BotService } from './bot.service';
 
 @Controller('api')
 export class BotController {
-  @Post('setup')
-  async setupSpy(@Body() data: any) {
-    console.log('Данные получены напрямую из Mini App:', data);
-    
-    // Здесь ты запускаешь своего Юзербота с полученными данными
-    // ... логика запуска ...
+  constructor(private readonly botService: BotService) {}
 
-    return { status: 'ok' };
+  @Post('setup-spy')
+  async setupSpy(@Body() data: { userId: number; donorId: string; targetId: string }) {
+    console.log(`📡 Настройка шпиона для ${data.userId}: ${data.donorId} -> ${data.targetId}`);
+    
+    // В будущем здесь мы будем сохранять это в базу MongoDB
+    return { success: true, message: 'Настройки шпиона сохранены!' };
   }
 }

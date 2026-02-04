@@ -2,160 +2,80 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spy System - Настройка</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root {
-            --tg-theme-bg-color: #1c1c1e;
-            --tg-theme-button-color: #0088cc;
-            --tg-theme-text-color: #ffffff;
-            --tg-theme-hint-color: #8e8e93;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--tg-theme-bg-color);
-            color: var(--tg-theme-text-color);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 400px;
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 20px;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        h2 { text-align: center; margin-bottom: 5px; font-size: 22px; }
-        p.subtitle { text-align: center; color: var(--tg-theme-hint-color); font-size: 14px; margin-bottom: 25px; }
-
-        .input-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px; }
-        
-        input {
-            width: 100%;
-            padding: 12px;
-            box-sizing: border-box;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-            color: white;
-            font-size: 16px;
-            transition: 0.3s;
-        }
-
-        input:focus {
-            outline: none;
-            border-color: var(--tg-theme-button-color);
-            background: rgba(255, 255, 255, 0.15);
-        }
-
-        .info-box {
-            background: rgba(0, 136, 204, 0.1);
-            border-left: 4px solid var(--tg-theme-button-color);
-            padding: 10px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            font-size: 13px;
-        }
-
-        .info-box a { color: var(--tg-theme-button-color); text-decoration: none; font-weight: bold; }
-
-        button {
-            width: 100%;
-            padding: 15px;
-            background-color: var(--tg-theme-button-color);
-            color: white;
-            border: none;
-            border-radius: 14px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.1s;
-        }
-
-        button:active { transform: scale(0.98); }
+        body { background: #1c1c1e; color: white; font-family: -apple-system, sans-serif; display: flex; justify-content: center; padding: 20px; }
+        .card { width: 100%; max-width: 350px; background: rgba(255,255,255,0.05); padding: 25px; border-radius: 20px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        h2 { margin-top: 0; color: #0088cc; }
+        .input-group { margin-bottom: 15px; text-align: left; }
+        label { font-size: 12px; color: #8e8e93; margin-left: 5px; }
+        input { width: 100%; padding: 12px; margin-top: 5px; border-radius: 12px; border: 1px solid #3a3a3c; background: #2c2c2e; color: white; box-sizing: border-box; }
+        .btn { width: 100%; padding: 15px; background: #0088cc; border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .info { font-size: 11px; color: #8e8e93; margin-top: 15px; }
+        a { color: #0088cc; text-decoration: none; }
     </style>
 </head>
 <body>
-
-<div class="container">
-    <h2>Spy System</h2>
-    <p class="subtitle">Привязка каналов для ИИ-копирования</p>
-
-    <div class="info-box">
-        ℹ️ Чтобы узнать ID каналов, перешлите любое сообщение из канала боту <a href="https://t.me/RawDataBot" target="_blank">@RawDataBot</a>.
+    <div class="card">
+        <h2>Spy System</h2>
+        <div class="input-group">
+            <label>ID КАНАЛА-ДОНОРА</label>
+            <input type="text" id="donorId" placeholder="-1001234567890">
+        </div>
+        <div class="input-group">
+            <label>ID ВАШЕГО КАНАЛА</label>
+            <input type="text" id="targetId" placeholder="-1000987654321">
+        </div>
+        <button class="btn" onclick="sendData()">🚀 Запустить шпиона</button>
+        <div class="info">
+            Узнать ID можно в <a href="https://t.me/RawDataBot" target="_blank">@RawDataBot</a>.<br>
+            Бот должен быть администратором в вашем канале!
+        </div>
     </div>
 
-    <div class="input-group">
-        <label>ID канала друга (Донор)</label>
-        <input type="text" id="sourceId" placeholder="Например: -100123456789">
-    </div>
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.MainButton.setText("ЗАКРЫТЬ ПРИЛОЖЕНИЕ");
+        tg.MainButton.hide();
 
-    <div class="input-group">
-        <label>ID вашего канала (Приемник)</label>
-        <input type="text" id="targetId" placeholder="Например: -100987654321">
-    </div>
+        async function sendData() {
+            const donorId = document.getElementById('donorId').value;
+            const targetId = document.getElementById('targetId').value;
 
-    <button id="saveBtn">Сохранить и запустить шпиона</button>
-</div>
-
-<script>
-    const tg = window.Telegram.WebApp;
-    tg.expand(); // Развернуть на весь экран
-    tg.ready();
-
-    const saveBtn = document.getElementById('saveBtn');
-
-    saveBtn.onclick = async () => {
-        const sourceId = document.getElementById('sourceId').value;
-        const targetId = document.getElementById('targetId').value;
-
-        if (!sourceId || !targetId) {
-            tg.showAlert("Пожалуйста, заполните оба ID!");
-            return;
-        }
-
-        // Показываем лоадер Telegram
-        tg.MainButton.showProgress();
-        
-        try {
-            // Отправляем данные на твой бэкенд
-            const response = await fetch('https://твой-туннель.lhr.life/user/setup', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Bypass-Tunnel-Reminder': 'true'
-                },
-                body: JSON.stringify({
-                    userId: tg.initDataUnsafe.user.id,
-                    sourceId: sourceId,
-                    targetId: targetId
-                })
-            });
-
-            if (response.ok) {
-                tg.showAlert("✅ Каналы успешно привязаны! Теперь бот будет пересылать посты через ИИ.");
-                tg.close(); // Закрыть Mini App
-            } else {
-                throw new Error("Ошибка сервера");
+            if (!donorId || !targetId) {
+                tg.showAlert("Ошибка: Заполните оба ID!");
+                return;
             }
-        } catch (error) {
-            tg.showAlert("❌ Ошибка соединения с сервером. Проверьте, запущен ли бэкенд.");
-        } finally {
-            tg.MainButton.hideProgress();
-        }
-    };
-</script>
 
+            const payload = {
+                userId: tg.initDataUnsafe.user?.id,
+                donorId: donorId,
+                targetId: targetId
+            };
+
+            try {
+                // Замени URL на адрес своего туннеля!
+                const response = await fetch('https://твой-туннель.lhr.life/api/setup-spy', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Bypass-Tunnel-Reminder': 'true' 
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    tg.showConfirm("Настройки применены! Запустить шпиона?", (ok) => {
+                        if (ok) tg.close();
+                    });
+                } else {
+                    tg.showAlert("Сервер временно недоступен");
+                }
+            } catch (e) {
+                tg.showAlert("Ошибка сети: проверьте туннель!");
+            }
+        }
+    </script>
 </body>
 </html>
