@@ -1,24 +1,20 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
-@Schema({ timestamps: true })
+@Schema()
 export class User extends Document {
   @Prop({ required: true, unique: true })
-  telegramId: number;
+  userId: number;
 
   @Prop()
   username: string;
 
+  @Prop()
+  phone: string;
+
   @Prop({ default: false })
-  hasSubscription: boolean;
+  hasAccess: boolean;
 
-  @Prop()
-  subscriptionType: string;
-
-  @Prop()
-  subscriptionExpiresAt: Date;
-
-  // Эти поля нужны для корректной работы userbot.service.ts
   @Prop()
   sourceChannelId: string;
 
@@ -26,4 +22,5 @@ export class User extends Document {
   targetChannelId: string;
 }
 
+// ВОТ ЭТА СТРОКА ОБЯЗАТЕЛЬНА:
 export const UserSchema = SchemaFactory.createForClass(User);

@@ -1,45 +1,46 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-
-export interface User {
-  id: number;
-  name: string;
-  hasAccess: boolean;
-  username?: string;
-}
 
 @Injectable()
 export class BotService {
-  private users: User[] = []; // Временная БД (пока не подключишь MongoDB)
+  // Хранилище юзеров (в идеале заменить на БД)
+  private users = new Map<number, any>();
+  
+  // Хранилище цен (теперь админ может их менять)
+  private prices = {
+    start: 100,
+    premium: 1200
+  };
 
-  constructor(private config: ConfigService) {}
-
-  registerUser(id: number, name: string, username?: string): User {
-    let user = this.users.find((u) => u.id === id);
-    if (!user) {
-      user = { id, name, username, hasAccess: false };
-      this.users.push(user);
-    }
-    return user;
+  // --- РАБОТА С ЮЗЕРАМИ ---
+  getUser(userId: number) {
+    return this.users.get(userId);
   }
 
-  getAllUsers(): User[] {
-    return this.users;
+  getAllUsers() {
+    return Array.from(this.users.values());
   }
 
-  toggleAccess(id: number): boolean {
-    const user = this.users.find((u) => u.id === id);
-    if (user) {
-      user.hasAccess = !user.hasAccess;
-      return user.hasAccess;
-    }
-    return false;
+  async updateUser(userId: number, data: any) {
+    const current = this.users.get(userId) || { userId, hasAccess: false };
+    this.users.set(userId, { ...current, ...data });
   }
 
-  getStats() {
-    return {
-      total: this.users.length,
-      active: this.users.filter((u) => u.hasAccess).length,
-    };
+  getUserBySourceId(sourceId: string) {
+    return this.getAllUsers().find(u => u.sourceChannelId === sourceId);
+  }
+
+  // --- РАБОТА С ЦЕНАМИ ---
+  getPrices() {
+    return this.prices;
+  }
+
+  updatePrice(type: 'start' | 'premium', amount: number) {
+    this.prices[type] = amount;
+  }
+
+  // --- AI РЕРАЙТ (ЗАГЛУШКА) ---
+  async rewriteContent(text: string): Promise<string> {
+    if (!text) return '';
+    return `✨ <b>AI Рерайт:</b>\n\n${text}\n\n🤖 <i>Обработано @ваша_ссылка</i>`;
   }
 }

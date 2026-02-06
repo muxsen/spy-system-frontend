@@ -1,0 +1,29 @@
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { BotService } from './bot.service';
+import { AiService } from '../ai/ai.service';
+import { TelegramClient } from 'telegram'; // Например, из библиотеки gramjs
+
+@Injectable()
+export class BotWorker implements OnModuleInit {
+  constructor(
+    private readonly botService: BotService,
+    private readonly aiService: AiService,
+  ) {}
+
+  async onModuleInit() {
+    console.log('🚀 Воркер запущен и ищет новые посты...');
+    this.startSpying();
+  }
+
+  async startSpying() {
+    // 1. Получаем из базы все активные связки каналов
+    const activeSpies = this.botService.getAllUsers().filter(user => user.hasAccess);
+
+    for (const spy of activeSpies) {
+      // 2. Логика подписки на события канала через UserBot
+      // Когда в spy.sourceChannel выходит пост:
+      // const newText = await this.aiService.rewrite(post.text);
+      // await bot.sendMessage(spy.targetChannel, newText);
+    }
+  }
+}

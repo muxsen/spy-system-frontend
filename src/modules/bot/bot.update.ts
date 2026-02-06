@@ -1,181 +1,231 @@
-import { Update, Start, Hears, Action, Ctx } from 'nestjs-telegraf';
+import { Update, Start, Action, Ctx, On, Hears } from 'nestjs-telegraf';
 import { Context, Markup } from 'telegraf';
-import { ConfigService } from '@nestjs/config';
 import { BotService } from './bot.service';
+import { ConfigService } from '@nestjs/config';
 
 @Update()
 export class BotUpdate {
-  private adminId: number;
-  private webAppUrl: string;
+  private readonly adminId: number;
 
   constructor(
-    private config: ConfigService,
-    private readonly botService: BotService
+    private readonly botService: BotService,
+    private readonly configService: ConfigService,
   ) {
-    this.adminId = Number(this.config.get<string>('ADMIN_ID'));
-    this.webAppUrl = this.config.get<string>('MINI_APP_URL')!;
+    this.adminId = Number(this.configService.get<string>('ADMIN_ID'));
   }
 
-  @Start()
-  async onStart(@Ctx() ctx: Context) {
-    if (!ctx.from) return;
-
-    this.botService.registerUser(ctx.from.id, ctx.from.first_name, ctx.from.username);
-    const isAdmin = ctx.from.id === this.adminId;
-
-    if (isAdmin) {
-      await ctx.replyWithMarkdownV2('👋 *Приветствую, Господин Администратор\\!*', 
-        Markup.keyboard([
-          ['👥 Пользователи', '📊 Статистика'],
-          ['🚀 Открыть Mini App', '🏠 Главное меню']
-        ]).resize()
-      );
+  // --- ГЛАВНОЕ МЕНЮ ---
+  private async getMainMenu(userId: number) {
+    if (userId === this.adminId) {
+      return Markup.keyboard([['👥 Пользователи']]).resize();
     } else {
-      const welcomeMsg = 
-        `✨ *Добро пожаловать в Spy System\\!*\n\n` +
-        `🤖 Это профессиональный ИИ\\-инструмент для вашего канала\\.\n\n` +
-        `💡 *Что я умею:* \n` +
-        `├ ⚡ Копирование постов в реальном времени\n` +
-        `├ 🧠 Умная перефразировка текста\n` +
-        `└ 🚫 Удаление ссылок и рекламы\n\n` +
-        `👇 *Для начала работы выберите тариф:*`;
-
-      await ctx.replyWithMarkdownV2(welcomeMsg, 
-        Markup.inlineKeyboard([
-          [Markup.button.callback('💎 Посмотреть тарифы', 'show_tariffs')]
-        ])
-      );
+      return Markup.keyboard([['📖 Инструкция']]).resize();
     }
   }
 
-  // --- ШАГ 1: ВЫБОР ТАРИФА ---
-  @Action('show_tariffs')
-  async showTariffs(@Ctx() ctx: Context) {
-    const tariffMsg = 
-      `💳 *Выберите тарифный план:*\n\n` +
-      `📦 *Lite:* 1 Месяц — \`60 000 сум\`\n` +
-      `🔥 *Pro:* 3 Месяца — \`150 000 сум\`\n` +
-      `💎 *Elite:* Пожизненно — \`1 000 000 сум\`\n\n` +
-      `_Нажмите на нужный тариф для подтверждения_`;
+  // 1. СТАРТ
+  @Start()
+  async onStart(@Ctx() ctx: Context) {
+    const userId = ctx.from!.id;
+    await this.botService.updateUser(userId, { userId, username: ctx.from?.username });
+    
+    if (userId === this.adminId) {
+      return await ctx.reply('👑 <b>Салам, Мухсэн!</b>\nАдмин-панель активна.', {
+        parse_mode: 'HTML',
+        ...Markup.keyboard([['👥 Пользователи']]).resize()
+      });
+    }
 
-    await ctx.editMessageText(tariffMsg, {
-      parse_mode: 'MarkdownV2',
-      ...Markup.inlineKeyboard([
-        [Markup.button.callback('📦 Lite', 'pay_60000'), Markup.button.callback('🔥 Pro', 'pay_150000')],
-        [Markup.button.callback('💎 Elite', 'pay_1000000')],
-        [Markup.button.callback('⬅️ Назад', 'back_to_start')]
-      ])
-    });
+    const menu = await this.getMainMenu(userId);
+    await ctx.reply('👋 Привет! Я готов к работе.', menu);
   }
 
-  // --- ШАГ 2: ПОДТВЕРЖДЕНИЕ ВЫБОРА (Цифры только!) ---
-  @Action(/^pay_(\d+)$/)
-  async handlePayment(@Ctx() ctx: any) {
-    const amount = ctx.match[1];
-    const confirmMsg = 
-      `📝 *Подтверждение заказа:*\n\n` +
-      `🔹 Сумма к оплате: \`${amount} сум\`\n` +
-      `🔹 Товар: *Подписка Spy System*\n\n` +
-      `👇 Нажмите кнопку ниже, чтобы получить реквизиты:`;
-
-    await ctx.editMessageText(confirmMsg, {
-      parse_mode: 'MarkdownV2',
-      ...Markup.inlineKeyboard([
-        [Markup.button.callback('💳 Оплатить', `checkout_${amount}`)],
-        [Markup.button.callback('❌ Отмена', 'show_tariffs')]
-      ])
-    });
+  // 2. ИНСТРУКЦИЯ
+  @Hears('📖 Инструкция')
+  async onHearsInstruction(@Ctx() ctx: any) {
+    await this.sendInstruction(ctx);
   }
 
-  // --- ШАГ 3: ПАНЕЛЬ РЕКВИЗИТОВ ---
-  @Action(/^checkout_(\d+)$/)
-  async checkout(@Ctx() ctx: any) {
-    const amount = ctx.match[1];
-    const paymentPanel = 
-      `💳 *Панель оплаты:*\n\n` +
-      `💵 К оплате: \`${amount} сум\`\n` +
-      `📍 *Реквизиты для перевода:* \n` +
-      `└ Карта: \`4444 0000 1111 2222\`\n\n` +
-      `⚠️ _После перевода средств нажмите на кнопку ниже для проверки транзакции_`;
-
-    await ctx.editMessageText(paymentPanel, {
-      parse_mode: 'MarkdownV2',
-      ...Markup.inlineKeyboard([
-        [Markup.button.callback('✨ Проверить платеж', 'pay_success')],
-        [Markup.button.callback('⬅️ Назад', 'show_tariffs')]
-      ])
-    });
+  @Action('show_inst')
+  async onInstAction(@Ctx() ctx: any) {
+    await ctx.answerCbQuery();
+    await this.sendInstruction(ctx);
   }
 
-  // --- ШАГ 4: ФИНАЛ (Кнопка Mini App) ---
-  @Action('pay_success')
-  async paySuccess(@Ctx() ctx: Context) {
-    await ctx.answerCbQuery('💎 Платеж подтвержден!');
-    await ctx.replyWithMarkdownV2(
-      `✅ *Оплата подтверждена\\!*\n\n` +
-      `🎉 Доступ активирован\\. Теперь настройте каналы в приложении\\.\n\n` +
-      `👇 Нажмите кнопку ниже:`, 
-      Markup.inlineKeyboard([
-        [Markup.button.webApp('🚀 Войти в Mini App', this.webAppUrl)]
-      ])
+  private async sendInstruction(ctx: any) {
+    const text = `📖 <b>ИНСТРУКЦИЯ:</b>\n\n` +
+                 `1️⃣ Нажмите "Подключить" и поделитесь контактом.\n` +
+                 `2️⃣ Дождитесь одобрения админа.\n` +
+                 `3️⃣ Добавьте бота в свой канал.\n` +
+                 `4️⃣ Перешлите пост из канала-источника.`;
+    
+    const inlineBtn = Markup.inlineKeyboard([[Markup.button.callback('🚀 Подключить', 'ask_contact')]]);
+    
+    if (ctx.callbackQuery) {
+      await ctx.editMessageText(text, { parse_mode: 'HTML', ...inlineBtn });
+    } else {
+      await ctx.reply(text, { parse_mode: 'HTML', ...inlineBtn });
+    }
+  }
+
+  // 3. РЕГИСТРАЦИЯ
+  @Action('ask_contact')
+  async onAskContact(@Ctx() ctx: any) {
+    await ctx.answerCbQuery();
+    await ctx.reply('📱 Нажмите кнопку ниже, чтобы поделиться номером:', 
+      Markup.keyboard([[Markup.button.contactRequest('📲 Поделиться номером')]]).oneTime().resize()
     );
   }
 
-  // --- АДМИН-ЛОГИКА ---
-  @Hears('📊 Статистика')
-  async onStats(@Ctx() ctx: Context) {
-    if (!ctx.from || ctx.from.id !== this.adminId) return;
-    const stats = this.botService.getStats();
-    await ctx.replyWithMarkdownV2(`📊 *Статистика:*\n\n👥 Всего: \`${stats.total}\`\n✅ Активно: \`${stats.active}\``);
+  @On('contact')
+  async onContact(@Ctx() ctx: any) {
+    const userId = ctx.from.id;
+    await this.botService.updateUser(userId, { phone: ctx.message.contact.phone_number });
+    await ctx.reply('✅ Контакт сохранен! Ожидайте активации доступа.', {
+      ...Markup.inlineKeyboard([
+        [Markup.button.callback('🌟 100 Stars', 'pay_100')],
+        [Markup.button.callback('🌟 250 Stars', 'pay_250')]
+      ])
+    });
   }
 
+  // 4. ОПЛАТА
+  @Action(/^pay_(.+)$/)
+  async onPay(@Ctx() ctx: any) {
+    const amount = Number(ctx.match[1]);
+    await ctx.replyWithInvoice({
+      title: 'Подписка PostBot',
+      description: `Активация доступа`,
+      payload: `sub_${amount}`,
+      provider_token: '',
+      currency: 'XTR',
+      prices: [{ label: 'Stars', amount }],
+    });
+  }
+
+  @On('successful_payment')
+  async onPaySuccess(@Ctx() ctx: any) {
+    await this.activateClient(ctx, ctx.from.id);
+  }
+
+  // --- 5. АКТИВАЦИЯ (С ДВУМЯ КНОПКАМИ) ---
+  private async activateClient(ctx: any, userId: number) {
+    await this.botService.updateUser(userId, { hasAccess: true });
+    
+    const text = `🎉 <b>ДОСТУП АКТИВИРОВАН!</b>\n\n` +
+                 `Теперь сделайте следующее:\n\n` +
+                 `1️⃣ Добавьте бота в свой канал как <b>Администратора</b>.\n` +
+                 `2️⃣ Нажмите кнопку <b>"Я подключил 👌"</b>.\n` +
+                 `3️⃣ Перешлите сюда пост из канала-источника.`;
+
+    const addBotUrl = `https://t.me/${ctx.botInfo.username}?startchannel=true`;
+
+    try {
+      await ctx.telegram.sendMessage(userId, text, {
+        parse_mode: 'HTML',
+        ...Markup.inlineKeyboard([
+          [Markup.button.url('➕ Добавить в канал', addBotUrl)],
+          [Markup.button.callback('Я подключил 👌', 'check_connection')]
+        ])
+      });
+    } catch (e) {
+      console.error('Ошибка уведомления:', e.message);
+    }
+  }
+
+  @Action('check_connection')
+  async onCheckConnection(@Ctx() ctx: any) {
+    await ctx.answerCbQuery('Принято!');
+    await ctx.reply('📡 <b>Последний шаг:</b>\n\nОтправьте в свой канал любое тестовое сообщение, а затем <b>перешлите</b> его мне сюда.', { parse_mode: 'HTML' });
+  }
+
+  // 6. ОБРАБОТКА ПЕРЕСЫЛКИ И СЛУЖЕБНЫХ СООБЩЕНИЙ
+  @On('message')
+  async onMessage(@Ctx() ctx: any) {
+    const userId = ctx.from.id;
+    const text = ctx.message.text || ctx.message.caption;
+
+    // Проверка админ-команд
+    if (userId === this.adminId && text === '👥 Пользователи') {
+      return await this.onAdminUsers(ctx);
+    }
+
+    // ЛОГИКА ОПРЕДЕЛЕНИЯ КАНАЛОВ
+    if (ctx.message.forward_from_chat) {
+      const chat = ctx.message.forward_from_chat;
+      const rawId = chat.id.toString().replace(/-100/g, ''); // Чистый ID
+
+      // Проверяем: если бот админ в этом канале, значит это TARGET
+      try {
+        const member = await ctx.telegram.getChatMember(chat.id, ctx.botInfo.id);
+        if (member.status === 'administrator') {
+          await this.botService.updateUser(userId, { targetChannel: chat.id.toString() });
+          return await ctx.reply(`🎯 <b>Ваш канал привязан!</b>\nСюда я буду постить рерайты.`, { parse_mode: 'HTML' });
+        }
+      } catch (e) {
+        // Если не админ, значит это канал ИСТОЧНИК
+        await this.botService.updateUser(userId, { sourceChannel: rawId });
+        return await ctx.reply(`✅ <b>Источник привязан!</b>\nЯ буду следить за ID: <code>${rawId}</code>`, { parse_mode: 'HTML' });
+      }
+    }
+  }
+
+  // --- 7. АДМИН-ПАНЕЛЬ ---
   @Hears('👥 Пользователи')
-  async onUsers(@Ctx() ctx: Context) {
-    if (!ctx.from || ctx.from.id !== this.adminId) return;
-    const users = this.botService.getAllUsers();
-    if (users.length === 0) return ctx.reply('📭 Список пуст');
-
+  async onAdminUsers(@Ctx() ctx: any) {
+    if (ctx.from.id !== this.adminId) return;
+    const users = await this.botService.getAllUsers();
+    if (!users.length) return ctx.reply('Пользователей пока нет.');
+    
     const buttons = users.map(u => [
-      Markup.button.callback(`${u.hasAccess ? '🟢' : '🔴'} ${u.name}`, `manage_${u.id}`)
+      Markup.button.callback(`${u.hasAccess ? '🟢' : '🔴'} ${u.username || u.userId}`, `adm_v_${u.userId}`)
     ]);
-    await ctx.reply('📂 *Управление доступом:*', { parse_mode: 'MarkdownV2', ...Markup.inlineKeyboard(buttons) });
+    await ctx.reply('📊 Управление пользователями:', Markup.inlineKeyboard(buttons));
   }
 
-  @Action(/^manage_(.+)$/)
-  async onManage(@Ctx() ctx: any) {
-    const userId = Number(ctx.match[1]);
-    const user = this.botService.getAllUsers().find(u => u.id === userId);
+  @Action(/^adm_v_(.+)$/)
+  async onAdminInfo(@Ctx() ctx: any) {
+    const user = await this.botService.getUser(Number(ctx.match[1]));
     if (!user) return;
-    await ctx.editMessageText(`👤 Юзер: ${user.name}\nДоступ: ${user.hasAccess ? 'Активен' : 'Закрыт'}`, 
-      Markup.inlineKeyboard([
-        [Markup.button.callback(user.hasAccess ? '🚫 Забрать' : '✅ Дать', `toggle_${user.id}`)],
-        [Markup.button.callback('⬅️ Назад', 'back_to_list')]
+    
+    const info = `👤 <b>Юзер:</b> @${user.username || 'n/a'}\n` +
+                 `🆔 <b>ID:</b> <code>${user.userId}</code>\n` +
+                 `🔓 <b>Доступ:</b> ${user.hasAccess ? '✅' : '❌'}\n` +
+                 `📥 <b>Источник:</b> ${user.sourceChannel || 'не задан'}\n` +
+                 `📤 <b>Куда постим:</b> ${user.targetChannel || 'не задан'}`;
+
+    await ctx.editMessageText(info, {
+      parse_mode: 'HTML',
+      ...Markup.inlineKeyboard([
+        [Markup.button.callback(user.hasAccess ? '🚫 Снять доступ' : '🎁 Дать доступ', `adm_gift_${user.userId}`)],
+        [Markup.button.callback('⬅️ Назад', 'adm_back')]
       ])
-    );
+    });
   }
 
-  @Action(/^toggle_(.+)$/)
-  async onToggle(@Ctx() ctx: any) {
+  @Action(/^adm_gift_(.+)$/)
+  async onGift(@Ctx() ctx: any) {
     const userId = Number(ctx.match[1]);
-    this.botService.toggleAccess(userId);
-    await ctx.answerCbQuery('Статус обновлен');
-    return this.onUsers(ctx);
+    const user = await this.botService.getUser(userId);
+    const newStatus = !user.hasAccess;
+
+    await this.botService.updateUser(userId, { hasAccess: newStatus });
+
+    if (newStatus) {
+      await this.activateClient(ctx, userId);
+      await ctx.answerCbQuery('🎁 Доступ выдан!');
+    } else {
+      await ctx.answerCbQuery('🚫 Доступ закрыт');
+    }
+    await this.onAdminInfo(ctx);
   }
 
-  @Action('back_to_list')
-  async backToList(@Ctx() ctx: Context) {
-    return this.onUsers(ctx);
+  @Action('adm_back')
+  async onBack(@Ctx() ctx: any) {
+    await ctx.answerCbQuery();
+    await this.onAdminUsers(ctx);
   }
 
-  @Action('back_to_start')
-  async backToStart(@Ctx() ctx: Context) {
-    return this.onStart(ctx);
-  }
-
-  @Hears('🚀 Открыть Mini App')
-  async openApp(@Ctx() ctx: Context) {
-    await ctx.reply('Ваша ссылка на приложение:', Markup.inlineKeyboard([
-      [Markup.button.webApp('Настройки шпиона', this.webAppUrl)]
-    ]));
-  }
+  @On('pre_checkout_query')
+  async onPre(@Ctx() ctx: any) { await ctx.answerPreCheckoutQuery(true); }
 }

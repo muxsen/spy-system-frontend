@@ -1,9 +1,7 @@
-﻿import { Controller, Get } from '@nestjs/common';
-import { AiService } from './ai.service';
+﻿import { Controller } from '@nestjs/common';
+import { AiService } from './ai.service'; // Было AIService
 
 @Controller('ai')
-export class AiController {
-  constructor(private service: AiService) {}
-  @Get() 
-  status() { return { module: 'ai', status: 'online' }; }
+export class AiController { // Было AIController
+  constructor(private readonly aiService: AiService) {}
 }

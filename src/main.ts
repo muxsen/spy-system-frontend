@@ -4,12 +4,11 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
-  app.enableCors(); // Разрешаем запросы с фронтенда
-
-  // 🔥 Исправление для Bypass-Tunnel-Reminder
-  app.use((req, res, next) => {
-    res.setHeader('Bypass-Tunnel-Reminder', 'true');
-    next();
+  // РАЗРЕШАЕМ ВСЕМУ (включая твой локальный клиент) подключаться
+  app.enableCors({
+    origin: '*', // Для локальной разработки ставим звездочку
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
   });
 
   await app.listen(3000);

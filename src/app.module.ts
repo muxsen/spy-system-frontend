@@ -1,31 +1,39 @@
 ﻿import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { MongooseModule } from '@nestjs/mongoose';
 import { TelegrafModule } from 'nestjs-telegraf';
+import { MongooseModule } from '@nestjs/mongoose';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { session } from 'telegraf';
 import { BotModule } from './modules/bot/bot.module';
 
 @Module({
   imports: [
+    // Глобальный конфиг
     ConfigModule.forRoot({ isGlobal: true }),
-    
+
+    // Подключение к MongoDB
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
-        // Добавляем !, так как мы уверены, что URI есть в .env
-        uri: configService.get<string>('MONGODB_URI')!, 
+        uri: configService.get<string>('MONGODB_URI'),
       }),
       inject: [ConfigService],
     }),
 
+    // Подключение к Telegram
     TelegrafModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        // Добавляем !, чтобы TS не ругался на возможный undefined
-        token: configService.get<string>('BOT_TOKEN')!,
-      }),
+      useFactory: (configService: ConfigService) => {
+        const token = configService.get<string>('BOT_TOKEN');
+        if (!token) throw new Error('BOT_TOKEN is missing!');
+        return {
+          token: token,
+          middlewares: [session()],
+        };
+      },
       inject: [ConfigService],
     }),
 
+    // Подключаем наш исправленный модуль бота
     BotModule,
   ],
 })
