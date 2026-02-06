@@ -1,26 +1,39 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
+export type UserDocument = User & Document;
+
 @Schema()
-export class User extends Document {
+export class User {
   @Prop({ required: true, unique: true })
   userId: number;
 
   @Prop()
-  username: string;
-
-  @Prop()
-  phone: string;
+  username?: string;
 
   @Prop({ default: false })
   hasAccess: boolean;
 
   @Prop()
-  sourceChannelId: string;
+  phone?: string;
 
   @Prop()
-  targetChannelId: string;
+  telegramApiId?: string;
+
+  @Prop()
+  telegramApiHash?: string;
+
+  @Prop()
+  telegramSession?: string;
+
+  @Prop({ default: '' }) // ДОБАВИТЬ ЭТО ПОЛЕ
+  tempStep: string;
+
+  @Prop()
+  sourceChannel?: string;
+
+  @Prop()
+  targetChannel?: string;
 }
 
-// ВОТ ЭТА СТРОКА ОБЯЗАТЕЛЬНА:
 export const UserSchema = SchemaFactory.createForClass(User);

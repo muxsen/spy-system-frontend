@@ -16,9 +16,9 @@ export class BotWorker implements OnModuleInit {
   }
 
   async startSpying() {
-    // 1. Получаем из базы все активные связки каналов
-    const activeSpies = this.botService.getAllUsers().filter(user => user.hasAccess);
-
+   // ... внутри метода, где ошибка
+const allUsers = await this.botService.getAllUsers(); // Добавили await
+const activeSpies = allUsers.filter(user => user.hasAccess);
     for (const spy of activeSpies) {
       // 2. Логика подписки на события канала через UserBot
       // Когда в spy.sourceChannel выходит пост:
