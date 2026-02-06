@@ -1,12 +1,13 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { User, UserSchema } from '../users/schemas/user.schema'; 
+import { User, UserSchema } from '../users/schemas/user.schema';
 import { TelegramClient } from 'telegram';
 import { StringSession } from 'telegram/sessions';
 import { ConfigService } from '@nestjs/config';
 import { Telegraf } from 'telegraf';
 import { InjectBot } from 'nestjs-telegraf';
+import { AiService } from '../ai/ai.service';
 
 @Injectable()
 export class BotService implements OnModuleInit {
@@ -19,19 +20,18 @@ export class BotService implements OnModuleInit {
     @InjectModel(User.name) private userModel: Model<User>,
     private configService: ConfigService,
     @InjectBot() private bot: Telegraf,
+    private aiService: AiService, // Внедряем твой ИИ сервис
   ) {
-    // Добавляем оператор '!' или '||' для уверенности TypeScript
     this.myApiId = Number(this.configService.get<number>('TELEGRAM_API_ID'));
     this.myApiHash = this.configService.get<string>('TELEGRAM_API_HASH') || '';
-    this.mySession = this.configService.get<string>('TELEGRAM_SESSION') || ''; 
+    this.mySession = this.configService.get<string>('TELEGRAM_SESSION') || '';
   }
 
   async onModuleInit() {
-    // Инициализируем только если есть сессия, чтобы не было ошибок при старте
     if (this.mySession) {
       await this.initSpy();
     } else {
-      console.log('⚠️ ВНИМАНИЕ: TELEGRAM_SESSION не найден в .env. Шпион не запущен.');
+      console.warn('⚠️ Шпион не запущен: нет TELEGRAM_SESSION в .env');
     }
   }
 
@@ -42,7 +42,7 @@ export class BotService implements OnModuleInit {
     });
 
     await this.client.connect();
-    console.log("🕵️ Шпион успешно подключен!");
+    console.log("🕵️ Шпион успешно подключен и слушает каналы!");
 
     this.client.addEventHandler(async (event: any) => {
       const message = event.message;
@@ -51,36 +51,35 @@ export class BotService implements OnModuleInit {
       const channelId = message.peerId.channelId?.toString();
       if (!channelId) return;
 
-      // Ищем подписчиков
+      // Ищем в базе всех, кто следит за этим источником
       const subscribers = await this.userModel.find({ sourceChannel: channelId });
 
       for (const user of subscribers) {
-        // Проверяем, что у пользователя есть канал-приемник
-        if (!user.targetChannel) continue;
+        if (!user.targetChannel || !user.hasAccess) continue;
 
         try {
           const originalText = message.message;
           if (!originalText) continue;
 
-          const rewrittenText = await this.rewriteContent(originalText);
+          console.log(`[SPY] Обработка поста для пользователя ${user.userId}`);
+          
+          // ВЫЗОВ ТВОЕГО НОВОГО ИИ (GPT)
+          const rewrittenText = await this.aiService.rewrite(originalText);
 
-          // Используем 'user.targetChannel!' чтобы TS не ругался
-          await this.bot.telegram.sendMessage(user.targetChannel!, rewrittenText, { 
+          // Отправка в канал-приемник
+          await this.bot.telegram.sendMessage(user.targetChannel, rewrittenText, { 
             parse_mode: 'HTML' 
           });
           
           console.log(`[OK] Пост переслан в ${user.targetChannel}`);
         } catch (e) {
-          console.error(`[ERR] Ошибка пересылки: ${e.message}`);
+          console.error(`[ERR] Ошибка при пересылке: ${e.message}`);
         }
       }
     });
   }
 
-  async rewriteContent(text: string): Promise<string> {
-    return `✨ <b>РЕРАЙТ:</b>\n\n${text}\n\n<i>Отредактировано ИИ</i>`;
-  }
-
+  // Методы управления пользователями
   async getUser(userId: number) {
     return this.userModel.findOne({ userId });
   }

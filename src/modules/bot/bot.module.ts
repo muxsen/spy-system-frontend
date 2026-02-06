@@ -1,16 +1,16 @@
-// src/modules/bot/bot.module.ts
 import { Module } from '@nestjs/common';
-import { TelegrafModule } from 'nestjs-telegraf';
 import { BotService } from './bot.service';
-import { BotUpdate } from './bot.update'; // Должен быть тут!
+import { BotUpdate } from './bot.update';
+import { AiModule } from '../ai/ai.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserSchema } from '../users/schemas/user.schema'; 
+
 @Module({
   imports: [
+    AiModule, // Подключаем твой ИИ
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
-    // Проверь настройки TelegrafModule тут
   ],
-  providers: [BotService, BotUpdate], // ОБЯЗАТЕЛЬНО BotUpdate должен быть в providers
+  providers: [BotService, BotUpdate],
   exports: [BotService],
 })
 export class BotModule {}
