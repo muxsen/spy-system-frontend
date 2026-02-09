@@ -4,7 +4,11 @@ import { StringSession } from 'telegram/sessions';
 import { NewMessage, NewMessageEvent } from 'telegram/events';
 import { ConfigService } from '@nestjs/config';
 import * as input from 'input';
-
+/**
+ * Represents a book.
+ * @constructor
+ * fjfgjlkdfjglk;dsf
+ */
 @Injectable()
 export class UserBotService implements OnModuleInit {
   private readonly logger = new Logger(UserBotService.name);
